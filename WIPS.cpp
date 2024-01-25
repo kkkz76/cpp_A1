@@ -5,14 +5,15 @@
 #include <set>
 #include <map>
 #include <cstdio> 
+#include <limits>
 using namespace std;
 
+// funcion declaration
 void menu();
 void configuration();
 void readFile (string filename);
 vector<string> tokenizeString (string input, string delimiter);
 int fileLineCount(string filename);
-static int callCount = 0;
 void displayCityMap();
 string** initializeMap();
 void displayMatrix(string** cityMap);
@@ -23,6 +24,11 @@ void displayPressureLMH();
 void displayReport();
 string checkLMH(double value);
 
+// static varible declaration
+static int callCount = 0;
+static int gridCallCount = 0;
+
+// struct declaration
 struct cityLocationStruct{
     int xPoint;
     int yPoint;
@@ -56,22 +62,19 @@ struct coordinateStruct{
     int gridYsize;
 };
 
-
+// pointer declaration
 cityLocationStruct *cityLocationArray;
 cloudCoverStruct *cloudCoverArray;
 pressureStruct *pressureArray;
 coordinateStruct *coordinatearray;
-
-
+string** cityMap;
 
 
 int main(){
-    int gridXmin,gridXmax,gridYmin,gridYmax;
-
     menu();
 }
 
-
+// Display Menu Function
 void menu(){
     bool loop_menu = true;
     while (loop_menu)
@@ -91,7 +94,14 @@ void menu(){
         cout << "8)   Quit" << endl;
         cout << "\nPlease enter your choice : ";
         cin >> choice;
-
+        
+      if(!cin){
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(),'\n');
+        cout << endl;
+        cout << "Enter a valid option number only"<<endl;
+        cout << endl;
+        }else{
         switch (choice)
         {
         case 1:
@@ -128,14 +138,23 @@ void menu(){
             break;
         
         default:
-            cout << "try again" << endl;
+            cout << endl;
+            cout << "Wrong Option.Try again!!!" << endl;
+            cout << endl;
             break;
         }
+        }
+      
     }
 }
 
+// config file read function
 void configuration(){
     string configfile;
+    int min;
+    int max;
+    int gridsize;
+
     cout << endl;
     cout << "Please enter your config filename : ";
     cin >> configfile;
@@ -146,43 +165,40 @@ void configuration(){
     {
 		cout << aLine << endl;
         size_t pos = aLine.find(".txt");
-        size_t xPos = aLine.find("GridX_IdxRange");
-        size_t yPos = aLine.find("GridY_IdxRange");
-		if (pos != string::npos){
+        size_t gridPos = aLine.find("=");
+        
+        if (pos != string::npos){
             readFile (aLine);
         }
-        else if(xPos != string::npos){
+        else if(gridPos != string::npos){
             vector<string> tokenStringVector = tokenizeString (aLine, "=");
             vector<string> tokenStringVector1 = tokenizeString (tokenStringVector[1], "-");
-            int min = stoi(tokenStringVector1[0]);
-            int max = stoi(tokenStringVector1[1]);
-            int gridXsize =(max-min)+1;
-            coordinatearray = new coordinateStruct[1];
-            coordinatearray[0].gridXmax = max;
-            coordinatearray[0].gridXmin = min;
-            coordinatearray[0].gridXsize = gridXsize;
+            min = stoi(tokenStringVector1[0]);
+            max = stoi(tokenStringVector1[1]);
+            gridsize =(max-min)+1;
 
-
-           
-
-        }else if(yPos != string:: npos){
-
-            vector<string> tokenStringVector = tokenizeString (aLine, "=");
-            vector<string> tokenStringVector1 = tokenizeString (tokenStringVector[1], "-");
-            int min = stoi(tokenStringVector1[0]);
-            int max = stoi(tokenStringVector1[1]);
-            int gridYsize =(max-min)+1;
-            coordinatearray[0].gridYmax = max;
-            coordinatearray[0].gridYmin = min;
-            coordinatearray[0].gridYsize = gridYsize;
-
-
+            if(gridCallCount == 0){
+                coordinatearray = new coordinateStruct[1];
+                coordinatearray[0].gridXmax = max;
+                coordinatearray[0].gridXmin = min;
+                coordinatearray[0].gridXsize = gridsize;
+                gridCallCount++;
+            }else{
+                coordinatearray[0].gridYmax = max;
+                coordinatearray[0].gridYmin = min;
+                coordinatearray[0].gridYsize = gridsize;
+                gridCallCount = 0;
+            }
+            tokenStringVector.clear();
+            tokenStringVector1.clear();
         }
 	}
 
 
     targetFile.ignore();
     targetFile.close();
+
+
     cout << endl;
     cout << "for city"<< endl;
 
@@ -224,6 +240,7 @@ void configuration(){
     
 }
 
+// read a single file from config file function
 void readFile(string filename){
     
     fstream targetFile (filename.c_str(), fstream::in);
@@ -231,19 +248,22 @@ void readFile(string filename){
     cout << "Reading file : " << filename << endl;
     cout << endl;
     string aLine;
+    string coordinates;
+    vector<string> tokenStringVector;
+    vector<string> tokenCoordinates;
     int arrayCount = 0;
     int lineCount = fileLineCount(filename);
-   
     if(callCount == 0){
         
         cityLocationArray = new cityLocationStruct [lineCount];
+        callCount++;
         while (getline(targetFile, aLine))
     {
-        vector<string> tokenStringVector = tokenizeString (aLine, "-");
-        string coordinates = tokenStringVector[0];
-        vector<string> cityCoordinates = tokenizeString (coordinates, ",");
-        cityLocationArray[arrayCount].xPoint = stoi(cityCoordinates[0]);
-        cityLocationArray[arrayCount].yPoint = stoi(cityCoordinates[1]);
+        tokenStringVector = tokenizeString (aLine, "-");
+        coordinates = tokenStringVector[0];
+        tokenCoordinates = tokenizeString (coordinates, ",");
+        cityLocationArray[arrayCount].xPoint = stoi(tokenCoordinates[0]);
+        cityLocationArray[arrayCount].yPoint = stoi(tokenCoordinates[1]);
         cityLocationArray[arrayCount].id = stoi(tokenStringVector[1]);
         cityLocationArray[arrayCount].value = tokenStringVector[2];
         cityLocationArray[arrayCount].lineCount = lineCount;
@@ -255,13 +275,14 @@ void readFile(string filename){
     }else if(callCount == 1){
        
         cloudCoverArray = new cloudCoverStruct [lineCount];
+        callCount++;
         while (getline(targetFile, aLine))
     {
         vector<string> tokenStringVector = tokenizeString (aLine, "-");
         string coordinates = tokenStringVector[0];
-        vector<string> cityCoordinates = tokenizeString (coordinates, ",");
-        cloudCoverArray[arrayCount].xPoint = stoi(cityCoordinates[0]);
-        cloudCoverArray[arrayCount].yPoint = stoi(cityCoordinates[1]);
+        vector<string> tokenCoordinates = tokenizeString (coordinates, ",");
+        cloudCoverArray[arrayCount].xPoint = stoi(tokenCoordinates[0]);
+        cloudCoverArray[arrayCount].yPoint = stoi(tokenCoordinates[1]);
         cloudCoverArray[arrayCount].value = stoi(tokenStringVector[1]);
         cloudCoverArray[arrayCount].lineCount = lineCount;
         arrayCount++;
@@ -272,25 +293,25 @@ void readFile(string filename){
     }else if (callCount == 2){
          
        pressureArray = new pressureStruct[lineCount];
+       callCount=0; // reset call count
         while (getline(targetFile, aLine))
     {
         vector<string> tokenStringVector = tokenizeString (aLine, "-");
         string coordinates = tokenStringVector[0];
-        vector<string> cityCoordinates = tokenizeString (coordinates, ",");
-        pressureArray[arrayCount].xPoint = stoi(cityCoordinates[0]);
-        pressureArray[arrayCount].yPoint = stoi(cityCoordinates[1]);
+        vector<string> tokenCoordinates = tokenizeString (coordinates, ",");
+        pressureArray[arrayCount].xPoint = stoi(tokenCoordinates[0]);
+        pressureArray[arrayCount].yPoint = stoi(tokenCoordinates[1]);
         pressureArray[arrayCount].value = stoi(tokenStringVector[1]);
         pressureArray[arrayCount].lineCount = lineCount;
         arrayCount++;
         targetFile.ignore();
     }}
-    
-   
-    callCount++;
-   
-    
+
+    tokenCoordinates.clear();
+    tokenStringVector.clear();
 }
 
+// calculate the total size of file function
 int fileLineCount(string filename){
     fstream targetFile (filename.c_str(), fstream::in);
     string aLine;
@@ -302,11 +323,11 @@ int fileLineCount(string filename){
     return lineCount;
 }
 
+// separate string function
 vector<string> tokenizeString (string input, string delimiter){
 	size_t pos = 0;
 	string token;
 	vector<string> result;
-
     if(delimiter == ","){
         input.erase(remove(input.begin(), input.end(), '['), input.end());
 	    input.erase(remove(input.begin(), input.end(), ']'), input.end());
@@ -320,12 +341,12 @@ vector<string> tokenizeString (string input, string delimiter){
 	}
 
 	result.push_back (input);
-
-	return (result);
+    return (result);
 }
 
-string** initializeMap(){
-    string** cityMap = new string*[coordinatearray[0].gridXsize];
+// initialize the coordinate
+string ** initializeMap(){
+    cityMap = new string*[coordinatearray[0].gridXsize];
     
     for (int x = coordinatearray[0].gridXmin; x < coordinatearray[0].gridXsize; ++x) {
         cityMap[x] = new string[coordinatearray[0].gridYsize];
@@ -371,12 +392,15 @@ void displayMatrix(string** cityMap){
 }
     
 void displayCityMap(){
+
     string** cityMap = initializeMap();
+
     for (int i = 0; i < cityLocationArray->lineCount; i++)
     {
         cityMap[cityLocationArray[i].xPoint][cityLocationArray[i].yPoint] = to_string(cityLocationArray[i].id);
     }
     displayMatrix(cityMap);
+    
 }
 
 
@@ -424,6 +448,8 @@ void displayCloudIdx(){
     cout << "Cloud Coverage Map (cloudiness Index )" << endl;
     cout << "\n\n\n";
     displayMatrix(cityMap);
+  
+   
 }
 
 void displayCloudLMH(){
@@ -449,6 +475,7 @@ void displayCloudLMH(){
     cout << "Cloud Coverage Map (LMH Symbols )" << endl;
     cout << "\n\n\n";
     displayMatrix(cityMap);
+    
 }
 
 
@@ -496,6 +523,7 @@ void displayPressureIdx(){
     cout << "Atmospheric Pressure Map (Pressure Index )" << endl;
     cout << "\n\n\n";
     displayMatrix(cityMap);
+    
 }
 
 void displayPressureLMH(){
@@ -522,11 +550,12 @@ void displayPressureLMH(){
     cout << "Atmospheric Pressure Map (LMH Symbols )" << endl;
     cout << "\n\n\n";
     displayMatrix(cityMap);
+   
 }
 
 
 void displayReport(){
-
+    
     map<pair<int, string>, set<pair<int, int>>> cityMap;
     for (int i = 0; i < cityLocationArray->lineCount; i++)
     {
